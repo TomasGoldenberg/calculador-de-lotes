@@ -1,6 +1,5 @@
 "use client";
-import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const prices = [
@@ -27,9 +26,16 @@ export default function Home() {
     const price = prices[lote - 1];
     const subTotal = price - pagoAdelantado;
     const amountPerMonth = subTotal / cantidadMeses;
-
-    setAmountPerMonth(amountPerMonth);
+    if (!Number.isNaN(amountPerMonth) && amountPerMonth !== Infinity) {
+      setAmountPerMonth(amountPerMonth);
+    } else {
+      setAmountPerMonth(0);
+    }
   };
+
+  useEffect(() => {
+    handleSubmit();
+  }, [lote, pagoAdelantado, cantidadMeses]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
@@ -62,6 +68,14 @@ export default function Home() {
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-lg transition-colors"
                 placeholder="1 - 20"
               />
+              {lote && lote >= 1 && lote <= 20 ? (
+                <p className="mt-2 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  El total del lote {lote} es $
+                  {prices[lote - 1].toLocaleString()}
+                </p>
+              ) : (
+                <></>
+              )}
             </div>
 
             <div>
@@ -86,6 +100,14 @@ export default function Home() {
                   placeholder="0.00"
                 />
               </div>
+              {lote && lote >= 1 && lote <= 20 && pagoAdelantado ? (
+                <p className="mt-2 text-sm text-green-600 dark:text-green-400 font-medium">
+                  El monto a financiar es $
+                  {(prices[lote - 1] - pagoAdelantado).toLocaleString()}
+                </p>
+              ) : (
+                <></>
+              )}
             </div>
 
             <div>
@@ -119,15 +141,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          <button
-            onClick={handleSubmit}
-            type="button"
-            disabled={!lote || !cantidadMeses}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-lg"
-          >
-            Calcular Pago Mensual
-          </button>
         </div>
       </div>
     </div>
