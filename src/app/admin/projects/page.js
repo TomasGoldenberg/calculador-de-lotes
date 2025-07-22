@@ -19,6 +19,11 @@ export default function AdminProjects() {
   });
   const [formErrors, setFormErrors] = useState({});
 
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Fetch projects from API
   const fetchProjects = async () => {
     try {
@@ -130,6 +135,51 @@ export default function AdminProjects() {
     setShowCreateModal(false);
     setFormData({ name: "", location: "", unitCount: "" });
     setFormErrors({});
+  };
+
+  // Handle delete project confirmation
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      setDeleteLoading(true);
+
+      const response = await fetch("/api/projects", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ projectId: projectToDelete._id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Close modal and refresh projects list
+        setShowDeleteModal(false);
+        setProjectToDelete(null);
+        await fetchProjects();
+      } else {
+        setError(data.error || "Failed to delete project");
+      }
+    } catch (err) {
+      setError("Error deleting project");
+      console.error("Error deleting project:", err);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Open delete confirmation modal
+  const openDeleteModal = (project) => {
+    setProjectToDelete(project);
+    setShowDeleteModal(true);
+  };
+
+  // Close delete confirmation modal
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setProjectToDelete(null);
   };
 
   // Load projects on component mount
@@ -341,6 +391,30 @@ export default function AdminProjects() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click navigation
+                          openDeleteModal(project);
+                        }}
+                        className="ml-2 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Delete Project"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </div>
 
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -352,6 +426,33 @@ export default function AdminProjects() {
                           {project.unitCount}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click navigation
+                          router.push(`/calculate/${project._id}`);
+                        }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center"
+                        title="Go to Calculator"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                          />
+                        </svg>
+                        Calculator
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -497,6 +598,100 @@ export default function AdminProjects() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Confirmation Modal */}
+      {showDeleteModal && projectToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-red-600 dark:text-red-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                    Delete Project
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
+                  Are you sure you want to delete{" "}
+                  <strong>"{projectToDelete.name}"</strong>?
+                </p>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="w-5 h-5 text-yellow-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        <strong>Warning:</strong> This will permanently delete
+                        the project and all its {projectToDelete.unitCount}{" "}
+                        associated units.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteProject}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Project"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

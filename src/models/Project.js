@@ -17,6 +17,26 @@ const ProjectSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    interestRates: {
+      lowRate: {
+        type: Number,
+        default: 8.0,
+        min: 0,
+        max: 100,
+      },
+      mediumRate: {
+        type: Number,
+        default: 12.0,
+        min: 0,
+        max: 100,
+      },
+      highRate: {
+        type: Number,
+        default: 16.0,
+        min: 0,
+        max: 100,
+      },
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields
@@ -42,6 +62,20 @@ ProjectSchema.statics.getStats = async function () {
     total,
     totalUnits: totalUnits.length > 0 ? totalUnits[0].total : 0,
   };
+};
+
+// Instance method to get interest rate based on payment months
+ProjectSchema.methods.getInterestRateForMonths = function (months) {
+  if (months <= 12) {
+    return this.interestRates.lowRate;
+  } else if (months > 12 && months <= 16) {
+    return this.interestRates.mediumRate;
+  } else if (months > 16 && months <= 20) {
+    return this.interestRates.highRate;
+  } else {
+    // For payments > 20 months, use high rate (or could be even higher)
+    return this.interestRates.highRate;
+  }
 };
 
 // Prevent re-compilation in development

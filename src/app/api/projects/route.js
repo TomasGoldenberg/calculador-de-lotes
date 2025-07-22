@@ -79,24 +79,105 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Clear all projects
-export async function DELETE() {
+// PUT - Update an existing project
+export async function PUT(request) {
   try {
     console.log("Connecting to database...");
     await connectDB();
 
-    console.log("Deleting all projects...");
-    const result = await Project.deleteMany({});
+    const body = await request.json();
+    const { projectId, ...updateData } = body;
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "Project ID is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log("Updating project:", projectId);
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProject) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: "All projects deleted",
-      deletedCount: result.deletedCount,
+      message: "Project updated successfully",
+      project: updatedProject,
     });
   } catch (error) {
     console.error("Database error:", error);
     return NextResponse.json(
-      { error: "Failed to delete projects" },
+      { error: "Failed to update project" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete individual project by ID or clear all projects
+export async function DELETE(request) {
+  try {
+    console.log("Connecting to database...");
+    await connectDB();
+
+    const body = await request.json().catch(() => ({}));
+    const { projectId } = body;
+
+    if (projectId) {
+      // Delete individual project and its associated units
+      console.log("Deleting project:", projectId);
+
+      // First, delete all units associated with this project
+      const Unit = (await import("@/models/Unit")).default;
+      const unitsDeleteResult = await Unit.deleteMany({ projectId });
+      console.log(
+        `Deleted ${unitsDeleteResult.deletedCount} units for project ${projectId}`
+      );
+
+      // Then delete the project
+      const deletedProject = await Project.findByIdAndDelete(projectId);
+
+      if (!deletedProject) {
+        return NextResponse.json(
+          { error: "Project not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Project and associated units deleted successfully",
+        deletedProject,
+        unitsDeleted: unitsDeleteResult.deletedCount,
+      });
+    } else {
+      // Delete all projects (existing functionality)
+      console.log("Deleting all projects...");
+
+      // Also delete all units when deleting all projects
+      const Unit = (await import("@/models/Unit")).default;
+      const allUnitsResult = await Unit.deleteMany({});
+      console.log(`Deleted ${allUnitsResult.deletedCount} units`);
+
+      const result = await Project.deleteMany({});
+
+      return NextResponse.json({
+        success: true,
+        message: "All projects and units deleted",
+        deletedCount: result.deletedCount,
+        unitsDeleted: allUnitsResult.deletedCount,
+      });
+    }
+  } catch (error) {
+    console.error("Database error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete project(s)" },
       { status: 500 }
     );
   }
