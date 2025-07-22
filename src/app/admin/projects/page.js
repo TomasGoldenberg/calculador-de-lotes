@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({ total: 0, totalUnits: 0 });
+  const router = useRouter();
 
   // Modal and form state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -288,7 +290,10 @@ export default function AdminProjects() {
                 {projects.map((project) => (
                   <div
                     key={project._id}
-                    className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 hover:shadow-2xl transition-shadow"
+                    className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 hover:shadow-2xl transition-shadow cursor-pointer"
+                    onClick={() =>
+                      router.push(`/admin/projects/${project._id}`)
+                    }
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">

@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Calculadora de pagos de lote",
-  description: "Calculadora de pagos de lote",
+  title: "Unit Payment Calculator",
+  description: "Calculate your unit payments and total costs",
 };
 
 export default function RootLayout({ children }) {
