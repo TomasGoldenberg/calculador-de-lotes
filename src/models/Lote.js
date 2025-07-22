@@ -2,13 +2,6 @@ import mongoose from "mongoose";
 
 const LoteSchema = new mongoose.Schema(
   {
-    id: {
-      type: Number,
-      required: true,
-      unique: true,
-      min: 1,
-      max: 20,
-    },
     price: {
       type: Number,
       required: true,
@@ -16,7 +9,6 @@ const LoteSchema = new mongoose.Schema(
     },
     available: {
       type: Boolean,
-      default: true,
     },
     description: {
       type: String,
@@ -29,6 +21,11 @@ const LoteSchema = new mongoose.Schema(
     size: {
       type: Number, // Size in square meters
       min: 0,
+    },
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
     },
   },
   {
