@@ -33,6 +33,12 @@ export default function ProjectDetails() {
   const [hasExistingUnits, setHasExistingUnits] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
+  // Reservations state
+  const [reservations, setReservations] = useState([]);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+  const [showReservations, setShowReservations] = useState(false);
+  const [reservationsStats, setReservationsStats] = useState(null);
+
   // Fetch project details
   const fetchProject = async () => {
     try {
@@ -114,6 +120,26 @@ export default function ProjectDetails() {
     } catch (err) {
       console.log("No existing units found or error fetching units:", err);
       // This is not a critical error, so we don't set the error state
+    }
+  };
+
+  // Fetch reservations for this project
+  const fetchReservations = async () => {
+    try {
+      setReservationsLoading(true);
+      const response = await fetch(`/api/projects/${projectId}/reservations`);
+      const data = await response.json();
+
+      if (data.success) {
+        setReservations(data.reservations);
+        setReservationsStats(data.stats);
+      } else {
+        console.error("Failed to fetch reservations:", data.error);
+      }
+    } catch (err) {
+      console.error("Error fetching reservations:", err);
+    } finally {
+      setReservationsLoading(false);
     }
   };
 
@@ -331,6 +357,7 @@ export default function ProjectDetails() {
   useEffect(() => {
     if (projectId) {
       fetchProject();
+      fetchReservations();
     }
   }, [projectId]);
 
@@ -487,6 +514,238 @@ export default function ProjectDetails() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Reservations Section */}
+        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-8 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Consultas de Clientes
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Gestionar consultas y leads de ventas
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowReservations(!showReservations);
+                if (!showReservations && reservations.length === 0) {
+                  fetchReservations();
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center"
+            >
+              {showReservations ? "Ocultar" : "Ver Consultas"}
+              {reservations.length > 0 && (
+                <span className="ml-2 bg-blue-800 text-white rounded-full px-2 py-1 text-xs">
+                  {reservations.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Reservations Stats */}
+          {reservationsStats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {reservationsStats.total}
+                </div>
+                <div className="text-sm text-blue-800 dark:text-blue-300">
+                  Total Consultas
+                </div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {reservationsStats.byStatus?.new || 0}
+                </div>
+                <div className="text-sm text-green-800 dark:text-green-300">
+                  Nuevas
+                </div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                  {reservationsStats.byStatus?.seen || 0}
+                </div>
+                <div className="text-sm text-yellow-800 dark:text-yellow-300">
+                  Vistas
+                </div>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  $
+                  {reservationsStats.totalValue?.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  }) || "0"}
+                </div>
+                <div className="text-sm text-purple-800 dark:text-purple-300">
+                  Valor Total
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showReservations && (
+            <div>
+              {reservationsLoading ? (
+                <div className="text-center text-gray-600 dark:text-gray-400 py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  Cargando consultas...
+                </div>
+              ) : reservations.length === 0 ? (
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  <svg
+                    className="w-12 h-12 mx-auto mb-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                    />
+                  </svg>
+                  No hay consultas para este proyecto aún.
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {reservations.map((reservation) => (
+                    <div
+                      key={reservation._id}
+                      className={`border rounded-lg p-4 transition-all ${
+                        reservation.status === "new"
+                          ? "border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800"
+                          : reservation.status === "seen"
+                          ? "border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800"
+                          : "border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center">
+                          <div
+                            className={`w-3 h-3 rounded-full mr-3 ${
+                              reservation.status === "new"
+                                ? "bg-blue-500"
+                                : reservation.status === "seen"
+                                ? "bg-yellow-500"
+                                : "bg-gray-500"
+                            }`}
+                          ></div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">
+                            {reservation.name}
+                          </h4>
+                        </div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            reservation.status === "new"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                              : reservation.status === "seen"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+                              : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          {reservation.status === "new"
+                            ? "Nueva"
+                            : reservation.status === "seen"
+                            ? "Vista"
+                            : "Asignada"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                            <svg
+                              className="w-4 h-4 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
+                            </svg>
+                            {reservation.email}
+                          </p>
+                          {reservation.phone && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                              <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                />
+                              </svg>
+                              {reservation.phone}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(reservation.createdAt).toLocaleDateString(
+                              "es-ES",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </p>
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          {reservation.unitId && (
+                            <p className="text-gray-700 dark:text-gray-300">
+                              <strong>Unidad:</strong> {reservation.unitId.size}
+                            </p>
+                          )}
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Pago inicial:</strong> $
+                            {reservation.initialPayment.toLocaleString()}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Meses:</strong> {reservation.monthsAmount}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Pago mensual:</strong> $
+                            {reservation.monthlyPayment.toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300 font-medium">
+                            <strong>Total:</strong> $
+                            {reservation.totalPayment.toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              }
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Interest Rates Configuration */}

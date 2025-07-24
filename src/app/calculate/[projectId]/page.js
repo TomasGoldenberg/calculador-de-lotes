@@ -18,6 +18,15 @@ export default function CalculatePage() {
   const [results, setResults] = useState(null);
   const [validationError, setValidationError] = useState(null);
 
+  // Modal and reservation state
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [reservationData, setReservationData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
+  const [submittingReservation, setSubmittingReservation] = useState(false);
+
   // Fetch units from project-specific API
   const fetchUnits = async () => {
     if (!projectId) return;
@@ -179,6 +188,92 @@ export default function CalculatePage() {
   // Helper function to get selected unit
   const getSelectedUnit = () => {
     return units.find((u) => u._id === selectedUnitId);
+  };
+
+  // Handle reservation form input changes
+  const handleReservationInputChange = (e) => {
+    const { name, value } = e.target;
+    setReservationData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle reservation form submission
+  const handleReservationSubmit = async (e) => {
+    e.preventDefault();
+
+    if (
+      !reservationData.name ||
+      !reservationData.email ||
+      !reservationData.phone
+    ) {
+      alert("Por favor, completa todos los campos.");
+      return;
+    }
+
+    if (!results || !selectedUnitId) {
+      alert(
+        "Error: No se encontraron los datos de cálculo. Por favor, recalcula antes de reservar."
+      );
+      return;
+    }
+
+    setSubmittingReservation(true);
+
+    try {
+      // Prepare reservation data according to the Reservation model
+      const reservationPayload = {
+        name: reservationData.name,
+        email: reservationData.email,
+        phone: reservationData.phone,
+        unitId: selectedUnitId,
+        initialPayment: parseFloat(pagoAdelantado),
+        monthsAmount: parseInt(cantidadMeses),
+        monthlyPayment: results.monthlyPayment,
+        totalPayment: results.totalAmount,
+      };
+
+      console.log("Sending reservation data:", reservationPayload);
+
+      // Send reservation to the project-specific API endpoint
+      const response = await fetch(`/api/projects/${projectId}/reservations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reservationPayload),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert(
+          "¡Consulta creada exitosamente! Un agente comercial se pondrá en contacto contigo pronto. ID: " +
+            data.reservation._id
+        );
+        setShowReserveModal(false);
+        setReservationData({ name: "", email: "", phone: "" });
+        // Refresh units to reflect any status changes
+        fetchUnits();
+      } else {
+        throw new Error(data.error || "Error al crear la reserva");
+      }
+    } catch (error) {
+      console.error("Error submitting reservation:", error);
+      alert(
+        "Error al enviar la reserva: " +
+          (error.message || "Por favor, inténtalo de nuevo.")
+      );
+    } finally {
+      setSubmittingReservation(false);
+    }
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setShowReserveModal(false);
+    setReservationData({ name: "", email: "", phone: "" });
   };
 
   return (
@@ -464,7 +559,143 @@ export default function CalculatePage() {
             </div>
           </div>
         )}
+
+        {/* Reserve Button */}
+        {results && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setShowReserveModal(true)}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg"
+            >
+              🏠 Consultar Esta Unidad
+            </button>
+            <p className="mt-2 text-sm text-gray-600">
+              Completa tus datos para consultar esta unidad
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* Reservation Modal */}
+      {showReserveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Consultar Unidad
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Selected Unit Info */}
+              {results && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-semibold text-blue-900 mb-2">
+                    Unidad Seleccionada
+                  </h3>
+                  <p className="text-blue-800">
+                    {results.selectedUnit.size} -{" "}
+                    {results.selectedUnit.description}
+                  </p>
+                  <p className="text-blue-800 font-bold">
+                    Precio: ${results.unitPrice.toLocaleString()}
+                  </p>
+                  <p className="text-blue-800">
+                    Pago mensual: $
+                    {results.monthlyPayment.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {/* Reservation Form */}
+              <form onSubmit={handleReservationSubmit} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Nombre Completo *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={reservationData.name}
+                    onChange={handleReservationInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    placeholder="Tu nombre completo"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Correo Electrónico *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={reservationData.email}
+                    onChange={handleReservationInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    placeholder="tu@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Teléfono *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={reservationData.phone}
+                    onChange={handleReservationInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                    placeholder="Tu número de teléfono"
+                  />
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingReservation}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReservation ? "Enviando..." : "Enviar Reserva"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
